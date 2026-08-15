@@ -66,17 +66,29 @@ vector<vector<int>> copiar(int** matriz, int n) {
     return resultado;
 }
 
+double** copiarCost(double** original, int n) {
+    double** copia = new double*[n];
+    for (int i = 0; i < n; i++) {
+        copia[i] = new double[n];
+        for (int j = 0; j < n; j++) {
+            copia[i][j] = original[i][j];
+        }
+    }
+    return copia;
+}
+
 void updateNode(Node *node, Data *data) {
     int n = data->getDimension();
     hungarian_problem_t p;
-    double** cost = data->getMatrixCost();
+    double** cost = copiarCost(data->getMatrixCost(), n);
     
     //atualizar a matriz cost adicionando as restricoes com base em forbiddenarcs
     //cost[i][j] = inf, sendo i e j um arco de forbidden
 
     for (int i=0;i<node->forbidden_arcs.size();i++) {
         cost[node->forbidden_arcs[i].first][node->forbidden_arcs[i].second] = 99999999;
-    }
+    } 
+
     int mode = HUNGARIAN_MODE_MINIMIZE_COST;
     hungarian_init(&p, cost, n, n, mode);
     
@@ -91,6 +103,9 @@ void updateNode(Node *node, Data *data) {
     node->feasible = result.feasible;
 
     hungarian_free(&p);
+
+    for (int i = 0; i < n; i++) delete[] cost[i];
+    delete[] cost;
 }
 
 Node branchingStrategy(list <Node>& tree, string estrategia) {
@@ -106,63 +121,29 @@ Node branchingStrategy(list <Node>& tree, string estrategia) {
     }
     //BBS
     else {
+        priority_queue<pair<double,int>, vector <pair<double,int>>, greater<pair<double,int>>> pq;
+        int idx = 0;
 
+        for (auto it = tree.begin(); it != tree.end(); ++it) {
+            pq.push({it->lower_bound, idx});
+            idx++;
+        }
+        int bestIdx = pq.top().second;
+        pq.pop();
+
+        auto it = tree.begin();
+        advance(it, bestIdx);
+        Node n = *it;
+        tree.erase(it);
+        return n;
     }
 }
 
-//implementacao da priority_queue
-
-int parent(int i) {return (i-1)/2; }
-
-int leftChild(int i) { return 2 * i + 1; }
-
-int rightChild(int i) { return 2*i + 2; }
-
-void shiftUp(int i, vector <int> &arr) {
-    while (i > 0 && arr[parent(i)] > arr[i]) {
-        swap(arr[parent(i)], arr[i]);
-        i = parent(i);
-    }
-}
-
-
-void shiftDown(int i, vector <int> &arr, int size) {
-    int minIndex = i;
-    int l  = leftChild(i);
-    if (l < size && arr[l] < arr[minIndex]) minIndex = l;
-    int r = rightChild(i);
-    if (r < size && arr[r] < arr[minIndex]) minIndex = r;
-
-    if (i != minIndex) {
-        swap(arr[i], arr[minIndex]);
-        shiftDown(minIndex, arr, size);
-    }
-}
-
-void insert(int p, vector <int> &arr) {
-    arr.push_back(p);
-    shiftUp(arr.size()-1, arr);
-}
-
-int pop(vector<int> &arr) {
-    int size = arr.size();
-    if (size == 0) return -1;
-    int result = arr[0];
-    arr[0] = arr[size - 1];
-    arr.pop_back();
-    shiftDown(0, arr, arr.size());
-    return result;
-}
-
-int getMin(vector <int> &arr) {
-    if (arr.empty()) return -1;
-    return arr[0];
-}
-
-void branchBound(Data data, string UB, string estrategia) {
+Node branchBound(Data data, string UB, string estrategia) {
+    Node bestNode;
     Node root; //no raiz
     updateNode(&root, &data); //resolver e atualizar a raiz a partir da instancia original
-
+    
     //criacao da arvore
     list <Node> tree;
     tree.push_back(root);
@@ -171,20 +152,24 @@ void branchBound(Data data, string UB, string estrategia) {
 
     while (!tree.empty()) {
         auto node = branchingStrategy(tree, estrategia); // escolher um dos nos da arvore e remove-lo
-
         if (node.feasible) {
-            if (node.lower_bound < upper_bound) upper_bound = node.lower_bound;
+            if (node.lower_bound < upper_bound) {
+                upper_bound = node.lower_bound;
+                bestNode = node;
+            }
             continue;
         }
+        if (node.lower_bound <= upper_bound) {
         //Adicionando os filhos
-        for (int i=0;i<node.subtour[node.chosen].size() - 1;i++) {
+        for (int i=0;i<node.subtour[node.chosen].size();i++) {
             //iterar por todos os arcos do subtour escolhido
             Node n;
             n.forbidden_arcs = node.forbidden_arcs;
 
-            pair<int,int> forbidden_arc = {
-                node.subtour[node.chosen][i], node.subtour[node.chosen][i+1]
-            };
+            int a = node.subtour[node.chosen][i];
+            int b = node.subtour[node.chosen][(i+1) % node.subtour[node.chosen].size()];
+
+            pair<int,int> forbidden_arc = {a, b};
 
             n.forbidden_arcs.push_back(forbidden_arc);
             updateNode(&n, &data);
@@ -192,5 +177,7 @@ void branchBound(Data data, string UB, string estrategia) {
             if (n.lower_bound <= upper_bound) tree.push_back(n); //inserir novos nos na arvore
         }
     }
+    }
+    return bestNode;
 }
 
