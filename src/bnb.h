@@ -20,8 +20,4 @@ Node isViavel(const vector <vector <int>>& matriz, int n);
 
 Node branchBound(Data data, string UB, string estrategia);
 
-
-
-
-
 #endif

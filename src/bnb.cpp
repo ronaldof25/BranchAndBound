@@ -110,13 +110,13 @@ void updateNode(Node *node, Data *data) {
 
 Node branchingStrategy(list <Node>& tree, string estrategia) {
     if (estrategia == "DFS") {
-        Node n = tree.front();
-        tree.pop_front();
+        Node n = tree.back();
+        tree.pop_back();
         return n;
     }
     else {
-        Node n = tree.back();
-        tree.pop_back();
+        Node n = tree.front();
+        tree.pop_front();
         return n;
     }
 }
@@ -126,8 +126,6 @@ Node branchingBBS(priority_queue <Node>& pq) {
     pq.pop();
     return n;
 }
-
-
 
 Node branchBound(Data data, string UB, string estrategia) {
     Node bestNode;
@@ -170,7 +168,7 @@ Node branchBound(Data data, string UB, string estrategia) {
 
             n.forbidden_arcs.push_back(forbidden_arc);
             updateNode(&n, &data);
-            
+
             //inserir novos nos na arvore
             if (n.lower_bound <= upper_bound) {
                 if (estrategia != "BBS") tree.push_back(n);
