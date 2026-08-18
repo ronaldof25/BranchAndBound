@@ -114,30 +114,20 @@ Node branchingStrategy(list <Node>& tree, string estrategia) {
         tree.pop_front();
         return n;
     }
-    else if (estrategia == "BFS") {
+    else {
         Node n = tree.back();
         tree.pop_back();
         return n;
     }
-    //BBS
-    else {
-        priority_queue<pair<double,int>, vector <pair<double,int>>, greater<pair<double,int>>> pq;
-        int idx = 0;
-
-        for (auto it = tree.begin(); it != tree.end(); ++it) {
-            pq.push({it->lower_bound, idx});
-            idx++;
-        }
-        int bestIdx = pq.top().second;
-        pq.pop();
-
-        auto it = tree.begin();
-        advance(it, bestIdx);
-        Node n = *it;
-        tree.erase(it);
-        return n;
-    }
 }
+
+Node branchingBBS(priority_queue <Node>& pq) {
+    Node n = pq.top();
+    pq.pop();
+    return n;
+}
+
+
 
 Node branchBound(Data data, string UB, string estrategia) {
     Node bestNode;
@@ -145,13 +135,20 @@ Node branchBound(Data data, string UB, string estrategia) {
     updateNode(&root, &data); //resolver e atualizar a raiz a partir da instancia original
     
     //criacao da arvore
-    list <Node> tree;
-    tree.push_back(root);
+    list<Node> tree;
+    priority_queue<Node> pq;
+
+    if (estrategia != "BBS") tree.push_back(root);
+    else pq.push(root);
 
     double upper_bound = stod(UB)+1; //// passar como argumento o valor otimo da instancia + 1
 
-    while (!tree.empty()) {
-        auto node = branchingStrategy(tree, estrategia); // escolher um dos nos da arvore e remove-lo
+
+    while (!tree.empty() || !pq.empty()) {
+        // escolher um dos nos da arvore e remove-lo
+        Node node;
+        if (estrategia != "BBS") node = branchingStrategy(tree, estrategia);
+        else node = branchingBBS(pq);
         if (node.feasible) {
             if (node.lower_bound < upper_bound) {
                 upper_bound = node.lower_bound;
@@ -173,8 +170,12 @@ Node branchBound(Data data, string UB, string estrategia) {
 
             n.forbidden_arcs.push_back(forbidden_arc);
             updateNode(&n, &data);
-
-            if (n.lower_bound <= upper_bound) tree.push_back(n); //inserir novos nos na arvore
+            
+            //inserir novos nos na arvore
+            if (n.lower_bound <= upper_bound) {
+                if (estrategia != "BBS") tree.push_back(n);
+                else pq.push(n);
+            }
         }
     }
     }

@@ -10,6 +10,10 @@ struct Node {
     double lower_bound;
     int chosen;
     bool feasible;
+
+    bool operator<(const Node& other) const {
+        return lower_bound > other.lower_bound;
+    }
 };
 
 Node isViavel(const vector <vector <int>>& matriz, int n);
